@@ -1,0 +1,24 @@
+name: heartbeat
+
+# The world takes a step when its front page is visited. Ten minutes is finer than
+# the site's own five-minute claim, so a late run never costs a step; GitHub's
+# scheduler is best-effort and often runs a few minutes late, which is harmless.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  visit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Open the front page
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 \
+            -H 'User-Agent: human-loop-heartbeat' \
+            https://human-loop-mu.vercel.app/)
+          echo "front page returned $code"
+          # A bad gateway or a cold start is not worth failing the run over; the
+          # next visit is ten minutes away. Only a sustained outage matters.
+          if [ "$code" != "200" ]; then echo "::warning::front page returned $code"; fi
